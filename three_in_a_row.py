@@ -9,6 +9,10 @@ class game():
     items = [1, 2, 3, 4, 5]
 
     def __init__(self, size_r, size_c):
+        # check field's sizes
+        if size_r < 3 or size_c < 3:
+            print('field\'s sizes can\'t be less than 3!')
+            exit()
         # number of rows
         self.size_r = size_r
         # number of columns
@@ -25,7 +29,8 @@ class game():
                 new_row.append(cell)
             field.append(new_row)
         self.field = field[:]
-        self.check_field()
+        # TODO remove it
+        #self.check_field()
 
     def colorize(self, num):
         res = ''
@@ -119,6 +124,7 @@ class game():
         return res
 
     def check_field(self):
+        '''Checking field for chains in both rows and columns'''
         self.print_field()
         chains_r = []
         chains_c = []
@@ -130,24 +136,29 @@ class game():
             chains_c.extend(self.check_column(0, i))
 
         if chains_r:
+            # there are chains in some row(s)
             for chain in chains_r:
                 for i in range(chain[0]):
                     self.field[chain[1][0]][chain[1][1] + i] = 0
                 score += chain[0]
 
         if chains_c:
+            # there are chains in some column(s)
             for chain in chains_c:
                 for i in range(chain[0]):
                     self.field[chain[1][0] + i][chain[1][1]] = 0
                 score += chain[0]
 
+        # is there were any chains?
         if score:
             self.update_score(score)
             print('Your score is: ', self.score)
             self.move_down_cells()
-            #self.fill_cells()
+        else:
+            return False
 
     def fill_cells(self):
+        '''Generate value for empty cells'''
         for r_id in range(self.size_r):
             for c_id in range(self.size_c):
                 if not self.field[r_id][c_id]:
@@ -155,6 +166,7 @@ class game():
         self.check_field()
 
     def move_down_cells(self):
+        '''Move full cells down to empty cells'''
         for c_id in range(self.size_c):
             for r_id in range(self.size_r - 1, -1, -1):
                 if self.field[r_id][c_id]:
@@ -195,7 +207,6 @@ class game():
             if (r - ar * 2) > 0 and (c - ac) > 0 and\
                     self.field[r - ar * 2][c - ac * 2] == cell:
                 # we have a chain, move make sense
-                self.check_field()
                 return True
         return False
 
@@ -233,28 +244,31 @@ class game():
         self.field[fr][fc] = self.field[tr][tc]
         self.field[tr][tc] = tmp
 
-        # check is after moving we will have at least one chain
-        # check upper and lower cells of the first cell
-        if self.find_chain(from_coord, where_to_move):
-            self.check_field()
+        if self.check_field():
+            print('good')
             return
-        # check upper and lower cells of the second cell
-        if self.find_chain(to_coord, where_to_move):
-            self.check_field()
-            return
+        ## check is after moving we will have at least one chain
+        ## check upper and lower cells of the first cell
+        #if self.find_chain(from_coord, where_to_move):
+            #self.check_field()
+            #return
+        ## check upper and lower cells of the second cell
+        #if self.find_chain(to_coord, where_to_move):
+            #self.check_field()
+        #    return
 
-        # check front and back
-        if where_to_move:
-            cell = self.field[fr][fc]
-            if (fc - 2) >= 0 and self.field[fr][fc - 1] == cell and\
-                    self.field[fr][fc - 2] == cell:
-                self.check_field()
-                return
-        else:
-            if (fc + 2) < self.size_c and self.field[fr + 1][fc] == cell and\
-                    self.field[fr + 2][fc] == cell:
-                self.check_field()
-                return
+        ## check front and back
+        #if where_to_move:
+            #cell = self.field[fr][fc]
+            #if (fc - 2) >= 0 and self.field[fr][fc - 1] == cell and\
+                    #self.field[fr][fc - 2] == cell:
+                #self.check_field()
+                #return
+        #else:
+            #if (fc + 2) < self.size_c and self.field[fr + 1][fc] == cell and\
+                    #self.field[fr + 2][fc] == cell:
+                #self.check_field()
+        #        return
 
         # move doesn't make sense, reverse changes
         tmp = self.field[fr][fc]
@@ -263,24 +277,183 @@ class game():
         print('nothing to move')
         return
 
+    def find_pairs(self):
+        '''Search for pairs of similar cell for future check'''
+        # checking rows
+        pairs_r = []
+        for i in range(self.size_r):
+            cell = self.field[i][0]
+
+            for j in range(1, self.size_c):
+                if self.field[i][j] == cell:
+                    # saving start of the pair
+                    pairs_r.append((i, j - 1))
+                else:
+                    cell = self.field[i][j]
+
+        # checking columns
+        pairs_c = []
+        for j in range(self.size_c):
+            cell = self.field[0][j]
+
+            for i in range(1, self.size_r):
+                if self.field[i][j] == cell:
+                    # saving start of the pair
+                    pairs_c.append((i - 1, j))
+                else:
+                    cell = self.field[i][j]
+        return pairs_r, pairs_c
+
+    def check_field_for_moves(self):
+        pairs_r, pairs_c = self.find_pairs()
+
+        # checking row's pairs
+        for r, c in pairs_r:
+            cell = self.field[r][c]
+
+            # check left side of the pair: up and down
+            if c > 0:
+                if r > 0 and self.field[r - 1][c - 1] == cell:
+                    return True
+                if (r + 1) < self.size_r and self.field[r + 1][c - 1] == cell:
+                    return True
+            # check left side of the pair: horizontal
+            if c > 1:
+                if self.field[r][c - 2] == cell:
+                    return True
+
+            # check right side of the pair: up and down
+            if (c + 2) < self.size_c:
+                if (r - 1) >= 0 and self.field[r - 1][c + 2] == cell:
+                    return True
+                if (r + 1) < self.size_r and self.field[r + 1][c + 2] == cell:
+                    return True
+            # check right side of the pair: horizontal
+            if (c + 3) < self.size_c and self.field[r][c + 3] == cell:
+                return True
+
+        # checking column's pairs
+        for r, c in pairs_c:
+            cell = self.field[r][c]
+            # check up of the pair: left and right
+            if r > 0:
+                if c > 0 and self.field[r - 1][c - 1] == cell:
+                    return True
+                if (c + 1) < self.size_c and self.field[r - 1][c + 1] == cell:
+                    return True
+            # check up of the pair: vertical
+            if r > 1:
+                if self.field[r - 2][c] == cell:
+                    return True
+
+            # check down side of the pair: left and right 
+            if (r + 2) < self.size_r:
+                if (c - 1) >= 0 and self.field[r + 2][c - 1] == cell:
+                    return True
+                if (c + 1) < self.size_r and self.field[r + 2][c + 1] == cell:
+                    return True
+            # check right side of the pair: horizontal
+            if (r + 3) < self.size_r and self.field[r + 3][c] == cell:
+                return True
+
+        # checking for neighbout pairs:
+        #     *2*  1*3  *2  1*
+        #     3*3  *4*  3*  *2
+        #               *5  1*
+
+        # checking rows
+        for r in range(self.size_r):
+            for c in range(self.size_c):
+                cell = self.field[r][c]
+
+                if (c + 2) < self.size_c and self.field[r][c + 2] == cell:
+                    #check middle cell up and down
+                    if r > 0 and self.field[r - 1][c + 1] == cell:
+                        return True
+                    if (r + 1) < self.size_r and\
+                            self.field[r + 1][c + 1] == cell:
+                        return True
+
+        # checking columns
+        for c in range(self.size_c):
+            for r in range(self.size_r):
+                cell = self.field[r][c]
+
+                if (r + 2) < self.size_r and self.field[r + 2][c] == cell:
+                    #check middle cell up and down
+                    if c > 0 and self.field[r + 1][c - 1] == cell:
+                        return True
+                    if (c + 1) < self.size_r and\
+                            self.field[r + 1][c + 1] == cell:
+                        return True
+        print('we need to shuffle')
+        return False
+
+    def shuffle_field(self):
+        '''If there is not a move - shuffle field'''
+        return
+
     def update_score(self, score):
         '''update score'''
         # TODO develop better algorithm for updating score
         # more cells was destroyed - more points user get
         self.score += score
 
+    def load(self):
+        with open('save.txt', 'r') as f:
+            tmp_field = []
+
+            for line in f:
+                tmp_row = []
+                for ch in line:
+                    try:
+                        tmp_row.append(int(ch))
+                    except:
+                        pass
+                tmp_field.append(tmp_row)
+        # TODO we need check size of field
+        self.field = tmp_field[:]
+
 
 def main():
+    #mg = game(4, 4)
+    #mg.generate_field()
+    #mg.field[0][0] = 1
+    #mg.field[0][1] = 1
+    #mg.field[0][2] = 4
+    #mg.field[0][3] = 2
+    #mg.field[1][0] = 1
+    #mg.field[1][1] = 2
+    #mg.field[1][2] = 3
+    #mg.field[1][3] = 5
+    #mg.field[2][0] = 5
+    #mg.field[2][1] = 4
+    #mg.field[2][2] = 2
+    #mg.field[2][3] = 1
+    #mg.field[3][0] = 3
+    #mg.field[3][1] = 2
+    #mg.field[3][2] = 4
+    #mg.field[3][3] = 3
+    #mg.print_field()
+    #print(mg.check_field_for_moves())
+    #exit()
     mg = game(5, 5)
     mg.generate_field()
+    mg.print_field()
     while True:
         s = input('x y from x y to\n')
-        fr, fc, tr, tc = s.split(' ')
-        fr = int(fr)
-        fc = int(fc)
-        tr = int(tr)
-        tc = int(tc)
-        mg.move_cell([fr, fc], [tr, tc])
+        try:
+            fr, fc, tr, tc = s.split(' ')
+            fr = int(fr)
+            fc = int(fc)
+            tr = int(tr)
+            tc = int(tc)
+            mg.move_cell([fr, fc], [tr, tc])
+            mg.check_field_for_moves()
+        except:
+            if s == 'l':
+                mg.load()
+            mg.print_field()
     return
 
 
