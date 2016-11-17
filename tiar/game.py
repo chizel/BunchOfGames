@@ -3,6 +3,8 @@
 
 import random
 import json
+import tkinter as tk
+import time
 
 
 class game():
@@ -19,9 +21,13 @@ class game():
         self.size_r = size_r
         # number of columns
         self.size_c = size_c
+        # user's score
         self.score = 0
+        # cell that was selected for move
+        self.selected_cell = None
 
     def generate_field(self):
+        '''Creating new field'''
         field = []
 
         for row in range(self.size_r):
@@ -31,20 +37,29 @@ class game():
                 new_row.append(cell)
             field.append(new_row)
         self.field = field[:]
-        self.check_field()
+        self.init_ui()
 
-    def colorize(self, num):
+    def colorize(self, num, gui=False):
         res = ''
         if num == 1:
             res = '\033[95m'
+            gcolor = 'grey'
         elif num == 2:
             res = '\033[94m'
+            gcolor = 'blue'
         elif num == 3:
             res = '\033[93m'
+            gcolor = 'yellow'
         elif num == 4:
             res = '\033[92m'
+            gcolor = 'green'
         elif num == 5:
             res = '\033[91m'
+            gcolor = 'red'
+
+        if gui:
+            return gcolor
+
         res += str(num)
         res += '\033[0m'
         return res
@@ -63,23 +78,13 @@ class game():
             i += 1
         print('__________________________')
 
-    def check_row(self, row, column, min_length=3, check_left=False):
-        '''Looking for chains in all rows starting from [row, columng].
-        If check_left is True - function will look to the left cell
-        for equal cells'''
+    def check_row(self, row, column, min_length=3):
+        '''Looking for chains in all rows starting from [row, columng].'''
         cell = self.field[row][column]
         chain_length = 1
         start = column
         # list with chains' data
         res = []
-
-        if check_left:
-            for c_id in range(column - 1, -1, -1):
-                if self.field[row][c_id] == cell:
-                    chain_length += 1
-                    start = column - 1
-                else:
-                    break
 
         for c_id in range(column + 1, self.size_c):
             if self.field[row][c_id] == cell:
@@ -95,23 +100,13 @@ class game():
             res.append([chain_length, (row, start)])
         return res
 
-    def check_column(self, row, column, min_length=3, check_up=False):
-        '''Looking for chains in all columns starting from [row, columng].
-        if check_up is True - function will look to the up cells of the
-        field for equal cells'''
+    def check_column(self, row, column, min_length=3):
+        '''Looking for chains in all columns starting from [row, columng].'''
         cell = self.field[row][column]
         chain_length = 1
         start = row
         # list with chains' data
         res = []
-
-        if check_up:
-            for r_id in range(row - 1, -1, -1):
-                if self.field[r_id][column] == cell:
-                    chain += 1
-                    start -= 1
-                else:
-                    break
 
         for r_id in range(row + 1, self.size_r):
             if self.field[r_id][column] == cell:
@@ -129,10 +124,9 @@ class game():
         return res
 
     def check_field(self):
-        '''Checking field for chains in rows and columns'''
-        # if we need to check field something had happend to it
-        # print it
-        self.print_field()
+        '''Checking field for chains in rows and columns, removing them'''
+        # if we need to check field something had happend to it, so print it
+        self.print_ui_field()
         chains_r = []
         chains_c = []
         score = 0
@@ -158,6 +152,7 @@ class game():
 
         # is there were any chains?
         if score:
+            self.print_ui_field()
             self.update_score(score)
             print('Your score is: ', self.score)
             self.move_down_cells()
@@ -166,7 +161,7 @@ class game():
             return False
 
     def fill_cells(self):
-        '''Generate value for empty cells'''
+        '''Generate values for empty cells'''
         for r_id in range(self.size_r):
             for c_id in range(self.size_c):
                 if not self.field[r_id][c_id]:
@@ -189,7 +184,7 @@ class game():
 
     def exchange_cells(self, from_coord, to_coord):
         '''Checking is exchange is possible
-        exchanging cells values and checking is move made sense
+        exchanging cells values and checking is move make sense
         e.g. after moving there is at least one chain'''
         fr, fc = from_coord
         tr, tc = to_coord
@@ -200,21 +195,13 @@ class game():
         elif fc >= self.size_c and tc >= self.size_c:
             return
 
-        # is cells are neighbours
-        if where_to_move:
+        # are cells neighbours?
+        if fr == tr:
             if abs(fc - tc) != 1:
                 return
-        else:
+        elif fc == tc:
             if abs(fr - tr) != 1:
                 return
-
-        # where to move - horizontal or vertical
-        if fr == tr:
-            # horizontal
-            where_to_move = 1
-        elif fc == tc:
-            # vertical
-            where_to_move = 0
         else:
             return
 
@@ -231,7 +218,7 @@ class game():
         tmp = self.field[fr][fc]
         self.field[fr][fc] = self.field[tr][tc]
         self.field[tr][tc] = tmp
-        self.print_field()
+        self.print_ui_field()
         print('nothing to move')
         return
 
@@ -362,55 +349,141 @@ class game():
 
     def save_game(self):
         '''Saving game to a file'''
+        # TODO save score
         with open(self.PATH + 'save.txt', 'w') as f:
             json.dump(self.field, f)
 
-    def load(self):
+    def load_game(self):
         '''Loading saved game'''
-        with open('save.txt', 'r') as f:
-            tmp_field = []
+        # TODO check is saving exists
+        with open(self.PATH + 'save.txt', 'r') as f:
+            self.field = json.load(f)
+        # checking loaded data
+        self.size_r = len(self.field)
+        self.size_c = len(self.field[0])
+        for line in self.field:
+            if len(line) != self.size_c:
+                print('Error! Loaded game has wrong data! (number of columns \
+                       in each row aren\'t equal.)')
+                exit()
+        self.print_ui_field()
+        #self.print_field()
 
-            for line in f:
-                tmp_row = []
-                for ch in line:
-                    try:
-                        tmp_row.append(int(ch))
-                    except:
-                        pass
-                tmp_field.append(tmp_row)
-        # TODO we need check size of field
-        self.field = tmp_field[:]
+    def init_ui(self):
+        '''initializing user interface'''
+        self.root = tk.Tk()
+        self.root.minsize(500, 500)
+        self.root.maxsize(500, 500)
+
+        self.main_frame = tk.Frame(
+            self.root,
+            width=450,
+            height=450,
+            )
+
+        self.main_frame.place(x=0, y=0)
+
+        # menu
+        menu_bar = tk.Menu(self.root)
+
+        file_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label='Menu', menu=file_menu)
+
+        #file_menu.add_command(label='New game', command=self.new_game)
+        file_menu.add_command(label='Save', command=self.save_game)
+        file_menu.add_command(label='Load', command=self.load_game)
+        #file_menu.add_command(label='Settings', command=self.settings)
+        file_menu.add_separator()
+        file_menu.add_command(label='Exit', command=self.root.destroy)
+
+        help_menu = tk.Menu(menu_bar, tearoff=0)
+        menu_bar.add_cascade(label='Help', menu=help_menu)
+        #help_menu.add_command(label='Help', command=self.show_help)
+        #help_menu.add_command(label='About', command=self.show_about)
+
+        self.root.config(menu=menu_bar)
+        # end menu
+
+        # key bindings
+       # self.main_frame.bind('<Enter>', lambda e: self.move('select'))
+       # self.main_frame.bind('<Enter>', lambda e: self.move('select'))
+        #self.main_frame.bind('<Right>', lambda e: self.move('right'))
+        #self.main_frame.bind('<Left>', lambda e: self.move('left'))
+        #self.main_frame.bind('<Up>', lambda e: self.move('up'))
+       # self.main_frame.bind('<Down>', lambda e: self.move('down'))
+        self.root.bind('<Control-s>', lambda e: self.save_game())
+        self.root.bind('<Control-l>', lambda e: self.load_game())
+        self.root.bind('<Control-q>', lambda e: self.root.destroy())
+
+        # creating field
+        self.ui_field = []
+
+        for i in range(self.size_r):
+            self.ui_field.append([])
+
+            for j in range(self.size_c):
+                # creating cell
+                self.create_cell(i, j)
+        self.main_frame.focus()
+        #self.print_ui_field()
+        self.check_field()
+        self.root.mainloop()
+
+    def create_cell(self, row, column):
+        self.ui_field[row].append(
+            tk.Label(
+                self.main_frame,
+                font=14,
+                width=4,
+                height=3,
+                justify=tk.CENTER,
+                relief=tk.RAISED,
+                bd=1,
+                bg='#F7CD8B'
+                )
+            )
+        self.ui_field[row][column].grid(row=row, column=column)
+        self.ui_field[row][column].bind(
+            '<Button-1>',
+            lambda e: self.select_cell(row, column))
+
+    def select_cell(self, row, column):
+        if self.selected_cell:
+            # cell was selected, check is it possible to exchange value
+            # with current on
+            r,c = self.selected_cell
+            self.ui_field[r][c].config(bg='#F7CD8B')
+            self.exchange_cells(self.selected_cell, [row, column])
+            self.selected_cell = None
+        else:
+            # save current cell's coordinates
+            self.selected_cell = (row, column)
+            self.ui_field[row][column].config(bg='#F2B6EC')
+
+    def print_ui_field(self):
+        '''updating values in the field'''
+        for r in range(self.size_r):
+            for c in range(self.size_c):
+                if self.field[r][c]:
+                    fgcolor = self.colorize(self.field[r][c], gui=True)
+                    self.ui_field[r][c].config(
+                        text=self.field[r][c],
+                        fg=fgcolor)
+                else:
+                    # empty cell
+                    self.ui_field[r][c].config(text='')
 
 
 def main():
-    #mg = game(4, 4)
-    #mg.generate_field()
-    #mg.field[0][0] = 1
-    #mg.field[0][1] = 1
-    #mg.field[0][2] = 4
-    #mg.field[0][3] = 2
-    #mg.field[1][0] = 1
-    #mg.field[1][1] = 2
-    #mg.field[1][2] = 3
-    #mg.field[1][3] = 5
-    #mg.field[2][0] = 5
-    #mg.field[2][1] = 4
-    #mg.field[2][2] = 2
-    #mg.field[2][3] = 1
-    #mg.field[3][0] = 3
-    #mg.field[3][1] = 2
-    #mg.field[3][2] = 4
-    #mg.field[3][3] = 3
-    #mg.print_field()
-    #print(mg.check_field_for_moves())
-    #exit()
-    mg = game(5, 5)
+    mg = game(6, 6)
     mg.generate_field()
+    exit()
     while True:
         s = input('x y from x y to\n')
         if s == 'l':
             mg.load()
-            mg.print_field()
+            #mg.print_field()
+            mg.print_ui_field()
         elif len(s) == 4:
             fr = int(s[0])
             fc = int(s[1])
@@ -419,7 +492,8 @@ def main():
             mg.exchange_cells([fr, fc], [tr, tc])
             mg.check_field_for_moves()
         else:
-            mg.print_field()
+            #mg.print_field()
+            mg.print_ui_field()
     return
 
 
