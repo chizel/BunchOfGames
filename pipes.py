@@ -39,7 +39,7 @@ class Line(Element):
             self.position = 0
         else:
             self.position = 1
- 
+
     def connections(self):
         if self.position == 0:
             return ['l', 'r']
@@ -295,7 +295,7 @@ class Pipes():
         #for cell in self.connected:
     def create_destinations(self, dest_coordinates):
         for r_id, c_id in dest_coordinates:
-            self.field[r_id][c_id] =  Dest()
+            self.field[r_id][c_id] = Dest()
 
 
 def main():

@@ -178,13 +178,13 @@ class ColorSquare():
     def save_game(self):
         '''Saving game to a file'''
         # TODO save score
-        with open(self.PATH + 'save.txt', 'w') as f:
+        with open(self.PATH + 'save_colosquare.txt', 'w') as f:
             json.dump(self.field, f)
 
     def load_game(self):
         '''Loading saved game'''
         # TODO check is saving exists
-        with open(self.PATH + 'save.txt', 'r') as f:
+        with open(self.PATH + 'save_colosquare.txt', 'r') as f:
             self.field = json.load(f)
         # checking loaded data
         self.size_r = len(self.field)

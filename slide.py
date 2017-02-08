@@ -43,11 +43,11 @@ class Slide():
             for j in range(self.size):
                 if self.field[i][j] == 0:
                     return (i, j)
-         
+
     def move(self, dest):
         #self.check_field()
         moved = False
-        row,column = self.empty_cell_pos()
+        row, column = self.empty_cell_pos()
 
         if dest == 'left':
             # is it possible to move cell?

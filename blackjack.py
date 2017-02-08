@@ -23,6 +23,7 @@ class Deck():
         for card in hand:
             res += hand.value
 
+
 class BlackJack():
     def __init__(self):
         pass
