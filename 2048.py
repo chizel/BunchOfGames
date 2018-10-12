@@ -291,7 +291,7 @@ class Game2048():
 
 
 def main():
-    g = Game2048(4)
+    g = Game2048(5)
     g.gen_numb()
     g.gen_numb()
     g.init_ui()

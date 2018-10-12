@@ -5,6 +5,10 @@ import json
 import tkinter as tk
 
 
+# 1 box: move - true
+# 2 wall: move - false
+# 3 teleport:move - false
+
 class Sokoban():
     # TODO change it
     PATH = './data/'
@@ -33,7 +37,11 @@ class Sokoban():
         print('===============')
 
     def move_object(self, row, column, coord):
-        '''checking is it possible to move object'''
+        '''moving object to neighbour cell'''
+        # is it possible to move?
+        if self.field[row][column] != 1:
+            return
+
         ar, ac = coord
         if self.field[row + ar][column + ac] == 0:
             self.field[row + ar][column + ac] = self.field[row][column]
@@ -42,6 +50,7 @@ class Sokoban():
         return False
 
     def move_player(self, dest):
+        '''moving player in dest direction'''
         row, column = self.player_pos
 
         if dest == 'left':
@@ -136,9 +145,11 @@ class Sokoban():
             self.print_ui_field()
 
     def check_field(self):
+        '''checking is all objects in right positions'''
         pass
 
     def save_game(self):
+        #TODO save player's position!!!
         with open(self.PATH + 'save_2048.txt', 'w') as f:
             json.dump(self.field, f)
 
@@ -233,7 +244,13 @@ class Sokoban():
 def main():
     g = Sokoban(7, 7)
     g.player_pos = [3, 3]
+    g.field[0][0] = 2
+    g.field[0][1] = 2
+    g.field[0][2] = 2
+    g.field[1][0] = 2
+    g.field[1][2] = 2
     g.field[3][1] = 1
+    g.field[3][2] = 2
     g.field[3][5] = 1
     g.init_ui()
 
